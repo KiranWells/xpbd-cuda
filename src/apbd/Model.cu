@@ -202,6 +202,18 @@ void Model::computeEnergies() { /*TODO*/
 
 void Model::write_state(unsigned int step) {
 #ifdef WRITE
+#ifdef __CUDA_ARCH__
+  if (threadIdx.x == 0)
+    printf("Step %d\n", step);
+  // print up to 8 simulations in parallel
+  for (size_t i = 0; i < body_count * 8; i++) {
+    if (i / 9 != threadIdx.x)
+      continue;
+    printf("%lu ", i);
+    bodies[i % 9].write_state();
+    printf("\n");
+  }
+#else
   printf("Step %d\n", step);
   for (size_t i = 0; i < body_count; i++) {
     printf("%lu ", i);
@@ -209,18 +221,19 @@ void Model::write_state(unsigned int step) {
     printf("\n");
   }
 #endif
+#endif
 }
 
 void Model::print_config() {
-  printf("Body count: %lu\n"
-         "Constraint count: %lu\n"
-         "Gravity: [%f %f %f]\n"
-         "Ground size: %f\n"
-         "Time Step: %f\n"
-         "End Time: %f\n"
-         "Steps: %u\n"
-         "Substeps: %u\n"
-         "Iterations: %u\n",
+  printf("# Body count: %lu\n"
+         "# Constraint count: %lu\n"
+         "# Gravity: [%f %f %f]\n"
+         "# Ground size: %f\n"
+         "# Time Step: %f\n"
+         "# End Time: %f\n"
+         "# Steps: %u\n"
+         "# Substeps: %u\n"
+         "# Iterations: %u\n",
          body_count, constraint_count, gravity(0), gravity(1), gravity(2),
          ground_size, h, tEnd, steps, substeps, iters);
 }

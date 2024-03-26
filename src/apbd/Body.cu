@@ -206,7 +206,7 @@ void Body::setInitTransform(Eigen::Matrix4f E) {
     auto &data = this->data.rigid;
     data.xInit.block<4, 1>(0, 0) =
         Eigen::Quaternionf(E.block<3, 3>(0, 0)).coeffs();
-    if (data.xInit(4) < 0) {
+    if (data.xInit(3) < 0) {
       data.xInit = -data.xInit;
     }
     data.xInit.block<3, 1>(4, 0) = E.block<3, 1>(0, 3);

@@ -7,13 +7,15 @@ with open(bpy.path.abspath("//positions_autogen.txt")) as file:
 
 current_frame = 0
 for line in file_text:
+    if line.startswith("#"):
+        continue
     if line.startswith("Step"):
         current_frame = int(line.split()[1])
 #        bpy.context.scene.frame_set(current_frame)
     else:
         elements = line.split()
         body_id = int(elements[0])
-        name = f"Cube.00{body_id}"
+        name = f"Cube.{body_id:03d}"
         x = float(elements[1])
         y = float(elements[2])
         z = float(elements[3])
@@ -42,7 +44,7 @@ for line in file_text:
     else:
         elements = line.split()
         body_id = int(elements[0])
-        name = f"Cube_valid.00{body_id}"
+        name = f"Cube_valid.{body_id:03d}"
         x = float(elements[1])
         y = float(elements[2])
         z = float(elements[3])

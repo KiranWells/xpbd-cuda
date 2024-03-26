@@ -19,6 +19,15 @@ __global__ void kernel(apbd::Model model, apbd::Body *body_buffer,
   // make a copy of the model
   apbd::Model thread_model =
       apbd::Model::clone_with_buffers(model, scene_id, body_buffer);
+
+  Eigen::Matrix3f R = se3::aaToMat(
+      Eigen::Vector3f(1, 1, 1), static_cast<float>(scene_id) * 0.5 * M_PI / 4);
+
+  for (size_t index = 0; index < thread_model.body_count; index++) {
+    auto body = &thread_model.bodies[index];
+    body->data.rigid.x.block<4, 1>(0, 0) = Eigen::Quaternionf(R).coeffs();
+  }
+
   // create a thread-local collider
   auto collider = apbd::Collider(&thread_model, scene_id, body_ptr_buffer,
                                  constraint_buffer);
@@ -27,7 +36,7 @@ __global__ void kernel(apbd::Model model, apbd::Body *body_buffer,
 }
 
 void run_kernel(apbd::Model model, int sims) {
-  cout << "thread blocks: " << (sims + BLOCK_SIZE - 1) / BLOCK_SIZE << endl;
+  cout << "# thread blocks: " << (sims + BLOCK_SIZE - 1) / BLOCK_SIZE << endl;
 
   // const size_t shared_size = c.constraints.size() * sizeof(Constraint);
   const size_t shared_size = 0;
@@ -43,7 +52,6 @@ void run_kernel(apbd::Model model, int sims) {
 
   model.move_to_device();
 
-  std::cout << "kernel start" << std::endl;
   auto t1 = Clock::now();
 
   kernel<<<(sims + BLOCK_SIZE - 1) / BLOCK_SIZE, BLOCK_SIZE, shared_size>>>(
@@ -52,7 +60,7 @@ void run_kernel(apbd::Model model, int sims) {
   CUDA_CHECK(cudaDeviceSynchronize());
 
   auto t2 = Clock::now();
-  std::cout << "Kernel took: " << (t2 - t1).count() << '\t';
+  std::cout << "# Kernel took: " << (t2 - t1).count() << '\t';
 }
 
 void run_cpu_thread(apbd::Model model, int sims, int processor_count, int id) {
@@ -77,7 +85,7 @@ void cpu_run_group(apbd::Model model, int sims) {
     h.join();
   }
   auto t2 = Clock::now();
-  cout << "Kernel took: " << (t2 - t1).count() << '\t';
+  cout << "# Kernel took: " << (t2 - t1).count() << '\t';
 }
 
 struct MainState {
@@ -133,21 +141,21 @@ MainState parse_arguments(int argc, char *argv[]) {
       if (optarg == NULL) {
         throw runtime_error("argument for output file is required.");
       }
-      cout << "output-file: " << optarg << endl;
+      cout << "# output-file: " << optarg << endl;
       state.output_file = optarg;
       break;
     case 'm':
       if (optarg == NULL) {
         break;
       }
-      cout << "model_id: " << optarg << endl;
+      cout << "# model_id: " << optarg << endl;
       state.model_id = std::stoi(optarg);
       break;
     case 's':
       if (optarg == NULL) {
         break;
       }
-      cout << "scene-count: " << optarg << endl;
+      cout << "# scene-count: " << optarg << endl;
       state.scene_count = std::stoul(optarg);
       break;
     // case 'a':
@@ -175,12 +183,12 @@ int main(int argc, char *argv[]) {
 
   auto t1 = Clock::now();
 #ifdef USE_CUDA
-  cout << "Running with CUDA" << endl;
+  cout << "# Running with CUDA" << endl;
   run_kernel(model, state.scene_count);
 #else
-  cout << "Running on CPU" << endl;
+  cout << "# Running on CPU" << endl;
   cpu_run_group(model, state.scene_count);
 #endif
   auto t2 = Clock::now();
-  cout << "Simulation took: " << (t2 - t1).count() << '\n';
+  cout << " Simulation took: " << (t2 - t1).count() << '\n';
 }
